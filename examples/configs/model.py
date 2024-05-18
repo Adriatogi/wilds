@@ -1,4 +1,9 @@
-model_defaults = {
+model_defaults = { #TODO: Need to know these too
+    "vit_b_16": {
+        'optimizer': 'AdamW',
+        'max_grad_norm': 1.0,
+        'scheduler': 'linear_schedule_with_warmup',
+    },
     'bert-base-uncased': {
         'optimizer': 'AdamW',
         'max_grad_norm': 1.0,

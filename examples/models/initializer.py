@@ -43,7 +43,18 @@ def initialize_model(config, d_out, is_featurizer=False):
                 name=config.model,
                 d_out=d_out,
                 **config.model_kwargs)
-
+    elif config.model in ("vit_b_16"):
+        print("vit_b_16 model inititalziation")
+        if featurize:
+            featurizer = initialize_torchvision_vit(
+                name=config.model, d_out=None, **config.model_kwargs
+            )
+            classifier = nn.Linear(featurizer.d_out, d_out)
+            model = (featurizer, classifier)
+        else:
+            model = initialize_torchvision_vit(
+                name=config.model, d_out=d_out, **config.model_kwargs
+            )
     elif 'bert' in config.model:
         if featurize:
             featurizer = initialize_bert_based_model(config, d_out, featurize)
@@ -157,6 +168,27 @@ def initialize_model(config, d_out, is_featurizer=False):
 
     return model
 
+def initialize_torchvision_vit(name, d_out, **kwargs):
+    import torchvision
+
+    if name == "vit_b_16":
+        # not passing in kwargs cause TypeError: VisionTransformer.__init__() got an unexpected keyword argument 
+        # 'num_channels' due to config default on poverty dataset which defaults to resent as well.
+        vit = torchvision.models.vit_b_16(weights="DEFAULT") 
+    else:
+        raise ValueError(f"Torchvision model {name} not recognized")
+
+    d_features = vit.heads.head.in_features
+
+    if d_out is None:  # want to initialize a featurizer model
+        last_layer = Identity(d_features)
+        vit.d_out = d_out
+    else:  # want to initialize a classifier for a particular num_classes
+        last_layer = nn.Linear(d_features, d_out)
+        vit.d_out = d_out
+
+    vit.heads.head = last_layer
+    return vit
 
 def initialize_bert_based_model(config, d_out, featurize=False):
     from models.bert.bert import BertClassifier, BertFeaturizer

@@ -5,6 +5,12 @@ algorithm_defaults = {
         'eval_loader': 'standard',
         'randaugment_n': 2,     # When running ERM + data augmentation
     },
+    "VIT": {
+        'train_loader': 'standard',
+        'uniform_over_groups': False, # TODO: Need to know what these do lol
+        'eval_loader': 'standard',
+        'randaugment_n': 2,
+    },
     'groupDRO': {
         'train_loader': 'standard',
         'uniform_over_groups': True,
