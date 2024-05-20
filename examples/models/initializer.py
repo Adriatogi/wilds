@@ -188,6 +188,10 @@ def initialize_torchvision_vit(name, d_out, **kwargs):
         vit.d_out = d_out
 
     vit.heads.head = last_layer
+    # TODO: Specific to poverty dataset (Model kwargs: {'num_channels': 8})
+    vit.conv_proj = nn.Conv2d(
+                 in_channels=8, out_channels=768, kernel_size=(16, 16), stride=(16, 16)
+             )
     return vit
 
 def initialize_bert_based_model(config, d_out, featurize=False):

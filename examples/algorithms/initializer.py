@@ -2,7 +2,6 @@ from types import SimpleNamespace
 import torch
 import math
 from wilds.common.utils import get_counts
-from algorithms.VIT import VIT
 from algorithms.ERM import ERM
 from algorithms.AFN import AFN
 from algorithms.DANN import DANN
@@ -18,7 +17,6 @@ from losses import initialize_loss
 def initialize_algorithm(config, datasets, train_grouper, unlabeled_dataset=None):
     train_dataset = datasets['train']['dataset']
     train_loader = datasets['train']['loader']
-    print(f"{len(train_dataset)=}")
     d_out = infer_d_out(train_dataset, config)
 
     # Other config
@@ -26,16 +24,7 @@ def initialize_algorithm(config, datasets, train_grouper, unlabeled_dataset=None
     loss = initialize_loss(config.loss_function, config)
     metric = algo_log_metrics[config.algo_log_metric]
 
-    if config.algorithm == "VIT":
-        algorithm = VIT(
-            config=config,
-            d_out=d_out,
-            grouper=train_grouper,
-            loss=loss,
-            metric=metric,
-            n_train_steps=n_train_steps,
-        )
-    elif config.algorithm == 'ERM':
+    if config.algorithm == 'ERM':
         algorithm = ERM(
             config=config,
             d_out=d_out,
