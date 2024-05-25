@@ -99,10 +99,10 @@ class FMoWDataset(WILDSDataset):
         if self._split_scheme.startswith('time_after'):
             year = int(self._split_scheme.split('_')[2])
             year_dt = datetime.datetime(year, 1, 1, tzinfo=pytz.UTC)
-            self.test_ood_mask = np.asarray(pd.to_datetime(self.metadata['timestamp']) >= year_dt)
+            self.test_ood_mask = np.asarray(pd.to_datetime(self.metadata['timestamp'], format='ISO8601') >= year_dt)
             # use 3 years of the training set as validation
             year_minus_3_dt = datetime.datetime(year-3, 1, 1, tzinfo=pytz.UTC)
-            self.val_ood_mask = np.asarray(pd.to_datetime(self.metadata['timestamp']) >= year_minus_3_dt) & ~self.test_ood_mask
+            self.val_ood_mask = np.asarray(pd.to_datetime(self.metadata['timestamp'], format='ISO8601') >= year_minus_3_dt) & ~self.test_ood_mask
             self.ood_mask = self.test_ood_mask | self.val_ood_mask
         else:
             raise ValueError(f"Not supported: self._split_scheme = {self._split_scheme}")
@@ -159,7 +159,7 @@ class FMoWDataset(WILDSDataset):
 
         # make a year column in metadata
         year_array = -1 * np.ones(len(self.metadata))
-        ts = pd.to_datetime(self.metadata['timestamp'])
+        ts = pd.to_datetime(self.metadata['timestamp'], format='ISO8601')
         for year in range(2002, 2018):
             year_mask = np.asarray(ts >= datetime.datetime(year, 1, 1, tzinfo=pytz.UTC)) \
                         & np.asarray(ts < datetime.datetime(year+1, 1, 1, tzinfo=pytz.UTC))
