@@ -189,9 +189,19 @@ def initialize_torchvision_vit(name, d_out, **kwargs):
 
     vit.heads.head = last_layer
     # TODO: Specific to poverty dataset (Model kwargs: {'num_channels': 8})
-    vit.conv_proj = nn.Conv2d(
-                 in_channels=8, out_channels=768, kernel_size=(16, 16), stride=(16, 16)
+    if 'num_channels' in kwargs and kwargs['num_channels'] > 3:
+        new_conv = nn.Conv2d(
+                 in_channels=kwargs['num_channels'], out_channels=768, kernel_size=(16, 16), stride=(16, 16)
              )
+        
+        # copy weights over
+        with torch.no_grad():
+            new_conv.weight[:, :3, :, :] = vit.conv_proj.weight
+            new_conv.weight[:, 3:, :, :].zero_()
+            new_conv.bias = vit.conv_proj.bias
+        
+        vit.conv_proj = new_conv
+
     return vit
 
 def initialize_bert_based_model(config, d_out, featurize=False):
