@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import os
 import traceback
+import torchvision
 
 from models.layers import Identity
 from utils import load
@@ -43,8 +44,7 @@ def initialize_model(config, d_out, is_featurizer=False):
                 name=config.model,
                 d_out=d_out,
                 **config.model_kwargs)
-    elif config.model in ("vit_b_16"):
-        print("vit_b_16 model inititalziation")
+    elif config.model in ("vit_b_16", "vit_l_16"):
         if featurize:
             featurizer = initialize_torchvision_vit(
                 name=config.model, d_out=None, **config.model_kwargs
@@ -168,13 +168,51 @@ def initialize_model(config, d_out, is_featurizer=False):
 
     return model
 
+class MetaEmbedding(nn.Module):
+    def __init__(self, featurizer, classifer, meta_in, meta_out):
+        super(MetaEmbedding, self).__init__()
+        self.featurizer = featurizer
+        self.classifier = classifer
+        self.meta_embedding = nn.Linear(meta_in, meta_out)
+
+        d_features = classifer.in_features
+        d_out = classifer.out_features
+        self.classifier = nn.Linear(d_features + meta_out, d_out)
+
+    def forward(self, x, metadata):
+        metadata = metadata.float()
+
+        x = self.featurizer(x)
+
+        # pass through metadata linear and concatenate here
+        meta_embedded = self.meta_embedding(metadata)
+        x = torch.cat((x, meta_embedded), dim=-1)
+        
+        # classifier
+        x = self.classifier(x)
+
+        return x
+
+def initialize_meta_model(config, d_out):
+    print("initializing meta model")
+    featurizer, classifier = initialize_model(config, d_out, is_featurizer=True)
+
+    meta_in = config.metadata_len
+    if meta_in is None:
+        raise ValueError(f"Meta model needs metadata_len config")
+    
+    # TODO: Dont hard code out
+    meta_out = 8
+    model = MetaEmbedding(featurizer, classifier, meta_in, meta_out)
+    return model
+
+
 def initialize_torchvision_vit(name, d_out, **kwargs):
-    import torchvision
 
     if name == "vit_b_16":
-        # not passing in kwargs cause TypeError: VisionTransformer.__init__() got an unexpected keyword argument 
-        # 'num_channels' due to config default on poverty dataset which defaults to resent as well.
         vit = torchvision.models.vit_b_16(weights="DEFAULT") 
+    elif name == 'vit_l_16':
+        vit = torchvision.models.vit_l_16(weights="DEFAULT") 
     else:
         raise ValueError(f"Torchvision model {name} not recognized")
 
@@ -182,13 +220,13 @@ def initialize_torchvision_vit(name, d_out, **kwargs):
 
     if d_out is None:  # want to initialize a featurizer model
         last_layer = Identity(d_features)
-        vit.d_out = d_out
+        vit.d_out = d_features
     else:  # want to initialize a classifier for a particular num_classes
         last_layer = nn.Linear(d_features, d_out)
         vit.d_out = d_out
 
     vit.heads.head = last_layer
-    # TODO: Specific to poverty dataset (Model kwargs: {'num_channels': 8})
+
     if 'num_channels' in kwargs and kwargs['num_channels'] > 3:
         new_conv = nn.Conv2d(
                  in_channels=kwargs['num_channels'], out_channels=768, kernel_size=(16, 16), stride=(16, 16)
@@ -201,6 +239,47 @@ def initialize_torchvision_vit(name, d_out, **kwargs):
             new_conv.bias = vit.conv_proj.bias
         
         vit.conv_proj = new_conv
+
+    # embedding (1), encoder (2-13), and last layer norm as a layer (14)
+    num_freeze = kwargs.get('num_freeze', 0)
+    if num_freeze > 0:
+        for p in vit.conv_proj.parameters():
+            p.requires_grad = False
+        vit.class_token.requires_grad = False
+
+        if num_freeze > 1:
+            encoder_layers = vit.encoder.layers
+            print(len(encoder_layers))
+
+            for layer in encoder_layers[:num_freeze]:
+                for param in layer.parameters():
+                    param.requires_grad = False
+
+            vit.encoder.pos_embedding.requires_grad = False
+            print("froze position")
+
+            if num_freeze == len(encoder_layers) + 2:
+                print("froze ln")
+                for p in vit.encoder.ln.parameters():
+                    p.requires_grad = False
+             
+    for layer_name, p in vit.named_parameters():
+        print('Layer Name: {}, Frozen: {}'.format(layer_name, not p.requires_grad))
+        print()
+
+    def modify_vit_encoder_dropout(vit_model, dropout_rate=0):
+        for layer in vit_model.encoder.layers:
+            layer.dropout.p = dropout_rate
+            for module in layer.mlp:
+                if isinstance(module, nn.Dropout):
+                    module.p = dropout_rate
+
+        return vit_model
+    
+    dropout_rate = kwargs.get('dropout', None)
+    if dropout_rate:
+        vit = modify_vit_encoder_dropout(vit, dropout_rate)
+    #print(vit)
 
     return vit
 
@@ -233,7 +312,6 @@ def initialize_bert_based_model(config, d_out, featurize=False):
     return model
 
 def initialize_torchvision_model(name, d_out, **kwargs):
-    import torchvision
 
     # get constructor and last layer names
     if name == 'wideresnet50':
