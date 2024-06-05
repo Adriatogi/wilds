@@ -37,14 +37,14 @@ process_pseudolabels_functions = {
 
 # see initialize_*() functions for correspondence=
 # See algorithms/initializer.py
-algorithms = ['ERM', 'groupDRO', 'deepCORAL', 'IRM', 'DANN', 'AFN', 'FixMatch', 'PseudoLabel', 'NoisyStudent']
+algorithms = ['ERM', 'MI', 'groupDRO', 'deepCORAL', 'IRM', 'DANN', 'AFN', 'FixMatch', 'PseudoLabel', 'NoisyStudent']
 
 # See transforms.py
 transforms = ['bert', 'image_base', 'image_resize', 'image_resize_and_center_crop', 'poverty',  'rxrx1']
 additional_transforms = ['randaugment', 'weak']
 
 # See models/initializer.py
-models = ['resnet18_ms', 'resnet18', 'resnet34', 'resnet50', 'resnet101', 'wideresnet50',
+models = ['resnet18_ms', "vit_b_16", "vit_l_16" 'resnet18', 'resnet34', 'resnet50', 'resnet101', 'wideresnet50',
          'densenet121', 'bert-base-uncased', 'distilbert-base-uncased',
          'gin-virtual', 'logistic_regression', 'code-gpt-py',
          'fasterrcnn', 'unet-seq']
