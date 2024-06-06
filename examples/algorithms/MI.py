@@ -7,6 +7,7 @@ class MI(SingleModelAlgorithm):
     def __init__(self, config, d_out, grouper, loss,
             metric, n_train_steps):
         model = initialize_meta_model(config, d_out)
+        print(model)
 
         # initialize module
         super().__init__(
@@ -43,9 +44,9 @@ class MI(SingleModelAlgorithm):
         g = move_to(self.grouper.metadata_to_group(metadata), self.device)
         metadata = move_to(metadata, self.device)
         
-
-        outputs = self.model(x, metadata)
-
+        
+        outputs = self.model(x, metadata[:, :2])
+        
         results = {
             'g': g,
             'y_true': y_true,

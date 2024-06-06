@@ -201,7 +201,7 @@ dataset_defaults = {
             'seed': 111,
             'use_ood_val': True
         },
-        'metadata_len': 4,
+        'usable_metadata_len': 2,
         'model': 'densenet121',
         'model_kwargs': {'pretrained': True},
         'transform': 'image_base',

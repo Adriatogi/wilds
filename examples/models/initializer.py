@@ -197,9 +197,9 @@ def initialize_meta_model(config, d_out):
     print("initializing meta model")
     featurizer, classifier = initialize_model(config, d_out, is_featurizer=True)
 
-    meta_in = config.metadata_len
+    meta_in = config.usable_metadata_len
     if meta_in is None:
-        raise ValueError(f"Meta model needs metadata_len config")
+        raise ValueError(f"Meta model needs usable_metadata_len config")
     
     # TODO: Dont hard code out
     meta_out = 8
